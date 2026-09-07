@@ -10,7 +10,7 @@ from schemas import (
 from handlers_connection import resolve_client
 
 @chat.function("list_flags", "List flags in Flagsmith.", action_type="read", chain_callable=True, event="flagsmith-connector.list_flags", effects=["read:flags"], data_model=FlagList)
-async def list_flags(params: ListFlagParams, ctx) -> ActionResult:
+async def list_flags(ctx, params: ListFlagParams) -> ActionResult:
     client = await resolve_client(ctx, params.connection_id)
     try:
         raw_items = await client.list_flags(limit=params.limit)
@@ -27,7 +27,7 @@ async def list_flags(params: ListFlagParams, ctx) -> ActionResult:
         return ActionResult.error(f"Error listing flags: {e}")
 
 @chat.function("get_flag", "Get details of one Flag in Flagsmith.", action_type="read", chain_callable=True, event="flagsmith-connector.get_flag", effects=["read:flag"], data_model=FlagRecord)
-async def get_flag(params: GetFlagParams, ctx) -> ActionResult:
+async def get_flag(ctx, params: GetFlagParams) -> ActionResult:
     client = await resolve_client(ctx, params.connection_id)
     try:
         r = await client.get_flag(params.flag_id)
@@ -40,7 +40,7 @@ async def get_flag(params: GetFlagParams, ctx) -> ActionResult:
         return ActionResult.error(f"Error retrieving Flag: {e}")
 
 @chat.function("audit_flag_health", "Audit health of Flagsmith flags and connectivity.", action_type="read", chain_callable=True, event="flagsmith-connector.audit_flag_health", effects=["read:audit"], data_model=AuditHealthReport)
-async def audit_flag_health(params: ConnectionIdParams, ctx) -> ActionResult:
+async def audit_flag_health(ctx, params: ConnectionIdParams) -> ActionResult:
     client = await resolve_client(ctx, params.connection_id)
     try:
         items = await client.list_flags(limit=50)

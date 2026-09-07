@@ -40,7 +40,7 @@ async def resolve_client(ctx, connection_id: str = "") -> FlagsmithClient:
     return FlagsmithClient(environment_key=conn["environment_key"], base_url=conn.get("base_url", ""))
 
 @chat.function("connect_flagsmith_connector", "Connect Flagsmith account via credentials.", action_type="write", chain_callable=True, event="flagsmith-connector.connect_flagsmith_connector", effects=["create:connection"], data_model=ConnectionRecord)
-async def connect_flagsmith_connector(params: ConnectParams, ctx) -> ActionResult:
+async def connect_flagsmith_connector(ctx, params: ConnectParams) -> ActionResult:
     client = FlagsmithClient(environment_key=params.environment_key, base_url=params.base_url)
     res = await client.verify_auth()
     if res.get("status") == "error":
@@ -59,7 +59,7 @@ async def connect_flagsmith_connector(params: ConnectParams, ctx) -> ActionResul
     return ActionResult.success(ConnectionRecord(**rec), summary=f"Connected Flagsmith ({rec['label']}).")
 
 @chat.function("list_connections", "List configured Flagsmith connections.", action_type="read", chain_callable=True, event="flagsmith-connector.list_connections", effects=["read:connections"], data_model=ConnectionList)
-async def list_connections(params: NoParams, ctx) -> ActionResult:
+async def list_connections(ctx, params: NoParams) -> ActionResult:
     conns = await get_connections_list(ctx)
     items = [ConnectionRecord(
         id=c["id"],
@@ -71,7 +71,7 @@ async def list_connections(params: NoParams, ctx) -> ActionResult:
     return ActionResult.success(ConnectionList(connections=items, total=len(items)), summary=f"Found {len(items)} connection(s).")
 
 @chat.function("disconnect_flagsmith_connector", "Disconnect Flagsmith account and delete stored credentials.", action_type="destructive", chain_callable=True, event="flagsmith-connector.disconnect_flagsmith_connector", effects=["delete:connection"], data_model=DeleteResult)
-async def disconnect_flagsmith_connector(params: ConnectionIdParams, ctx) -> ActionResult:
+async def disconnect_flagsmith_connector(ctx, params: ConnectionIdParams) -> ActionResult:
     conns = await get_connections_list(ctx)
     if not conns:
         return ActionResult.error("No connections to disconnect.")

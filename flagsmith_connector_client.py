@@ -10,7 +10,7 @@ class FlagsmithClient:
         self.environment_key = environment_key.strip()
         self.base_url = (base_url.strip() if base_url else DEFAULT_BASE).rstrip("/")
         self.headers = {
-            "X-Environment-Key": f"Bearer {self.environment_key}" if "X-Environment-Key" == "Authorization" else self.environment_key,
+            "X-Environment-Key": self.environment_key,
             "Content-Type": "application/json",
             "User-Agent": "Imperal-Flagsmith-Connector/1.0.0"
         }
@@ -21,25 +21,31 @@ class FlagsmithClient:
             try:
                 resp = await client.get(f"{self.base_url}/flags/", headers=self.headers)
                 if resp.status_code in (200, 201, 204):
-                    return {"status": "ok", "data": resp.json() if resp.content else {}}
+                    data = resp.json() if resp.content else []
+                    return {"status": "ok", "data": data}
                 return {"status": "error", "error": f"HTTP {resp.status_code}: {resp.text}"}
             except Exception as e:
                 return {"status": "error", "error": str(e)}
 
     async def list_flags(self, limit: int = 20) -> list[dict[str, Any]]:
         async with httpx.AsyncClient(timeout=self.timeout) as client:
-            resp = await client.get(f"{self.base_url}/flags", headers=self.headers, params={"limit": limit})
+            resp = await client.get(f"{self.base_url}/flags/", headers=self.headers)
             if resp.status_code == 200:
                 data = resp.json()
-                if isinstance(data, list): return data
+                if isinstance(data, list):
+                    return data[:limit]
                 for k in ["data", "flags", "items", "results"]:
-                    if k in data and isinstance(data[k], list): return data[k]
+                    if k in data and isinstance(data[k], list):
+                        return data[k][:limit]
                 return []
             return []
 
     async def get_flag(self, flag_id: str) -> dict[str, Any]:
-        async with httpx.AsyncClient(timeout=self.timeout) as client:
-            resp = await client.get(f"{self.base_url}/flags/{flag_id}", headers=self.headers)
-            if resp.status_code == 200:
-                return resp.json()
-            raise ValueError(f"HTTP {resp.status_code}: {resp.text}")
+        flags = await self.list_flags(limit=100)
+        for f in flags:
+            feat = f.get("feature", {})
+            feat_id = str(feat.get("id") or "")
+            feat_name = str(feat.get("name") or "")
+            if feat_id == flag_id or feat_name == flag_id:
+                return f
+        raise ValueError(f"Flag '{flag_id}' not found in environment.")

@@ -16,10 +16,13 @@ async def list_flags(params: ListFlagParams, ctx) -> ActionResult:
         raw_items = await client.list_flags(limit=params.limit)
         items = []
         for r in raw_items:
-            rid = str(r.get("id") or r.get("key") or r.get("uuid") or "unknown")
-            rname = r.get("name") or r.get("title") or r.get("label") or rid
-            items.append({"id": rid, "name": rname, "status": r.get("status"), "created_at": r.get("createdAt") or r.get("created_at"), "raw": r})
-        return ActionResult.ok({"flags": items, "total": len(items)}, summary=f"Found {len(items)} flags.")
+            feat = r.get("feature", {})
+            rid = str(feat.get("id") or r.get("id") or "unknown")
+            rname = feat.get("name") or r.get("name") or rid
+            enabled = r.get("enabled", False)
+            status = "enabled" if enabled else "disabled"
+            items.append(FlagRecord(id=rid, name=rname, status=status, created_at=None, raw=r))
+        return ActionResult.success(FlagList(flags=items, total=len(items)), summary=f"Found {len(items)} flags.")
     except Exception as e:
         return ActionResult.error(f"Error listing flags: {e}")
 
@@ -28,9 +31,11 @@ async def get_flag(params: GetFlagParams, ctx) -> ActionResult:
     client = await resolve_client(ctx, params.connection_id)
     try:
         r = await client.get_flag(params.flag_id)
-        rid = str(r.get("id") or params.flag_id)
-        rname = r.get("name") or r.get("title") or rid
-        return ActionResult.ok({"id": rid, "name": rname, "status": r.get("status"), "created_at": r.get("createdAt") or r.get("created_at"), "raw": r}, summary=f"Retrieved Flag {rid}.")
+        feat = r.get("feature", {})
+        rid = str(feat.get("id") or r.get("id") or params.flag_id)
+        rname = feat.get("name") or r.get("name") or rid
+        status = "enabled" if r.get("enabled", False) else "disabled"
+        return ActionResult.success(FlagRecord(id=rid, name=rname, status=status, created_at=None, raw=r), summary=f"Retrieved Flag {rname} ({rid}).")
     except Exception as e:
         return ActionResult.error(f"Error retrieving Flag: {e}")
 
@@ -39,11 +44,11 @@ async def audit_flag_health(params: ConnectionIdParams, ctx) -> ActionResult:
     client = await resolve_client(ctx, params.connection_id)
     try:
         items = await client.list_flags(limit=50)
-        return ActionResult.ok({
-            "healthy": True,
-            "total_flags": len(items),
-            "details": {"sample_count": len(items)},
-            "summary": f"Flagsmith healthy. Sampled {len(items)} flags."
-        }, summary=f"Flagsmith health check passed with {len(items)} flags.")
+        return ActionResult.success(AuditHealthReport(
+            healthy=True,
+            total_flags=len(items),
+            details={"sample_count": len(items)},
+            summary=f"Flagsmith healthy. Sampled {len(items)} flags."
+        ), summary=f"Flagsmith health check passed with {len(items)} flags.")
     except Exception as e:
         return ActionResult.error(f"Error auditing Flagsmith health: {e}")

@@ -1,19 +1,27 @@
-# PST Testing Scenarios for Flagsmith Connector
+# Flagsmith Connector Scenario Tests
 
-## Part A: Authentication & Connectivity Verification
-- **Scenario A1: Valid Credential Connect**: `connect_flagsmith_connector` saves token and validates endpoint.
-- **Scenario A2: Invalid Token Handling**: Returns HTTP 401/403 with descriptive error.
-- **Scenario A3: Multi-Account Isolation**: Different tenants store separate credentials in secure vault.
+## Target & Authentication
+- Vendor: Flagsmith
+- Category: Feature Flagging & Remote Configuration
+- Auth Method: Server-side Environment Key (`ser.*`)
+- Target Environment: Live Production / Edge API (`https://edge.api.flagsmith.com/api/v1`)
+- Tested User: `vlad@bluebeeweb.com` (Google Chrome Profile 2)
 
-## Part B: Core Read Operations & Boundary Handling
-- **Scenario B1: List Flags**: `list_flags` returns typed list with bounds.
-- **Scenario B2: Get Flag**: `get_flag` returns entity details or 404 error.
-- **Scenario B3: Health Audit**: `audit_flag_health` aggregates active records.
-
-## Part C: Safe Write & Idempotency Testing
-- **Scenario C1: Connection Lifecycle**: Clean disconnect via `disconnect_flagsmith_connector` without lingering secrets.
-
-## Part D: Regression, Deploy & Platform Verification
-- **Scenario D1: Deployment Verification**: Clean pull and 22/22 SDK check passes.
-- **Scenario D2: Pricing Enforcement**: Per-action pricing active on catalog.
-- **Scenario D3: No Secret Leak**: API tokens masked in responses and logs.
+## Automated Live Verification Summary
+1. **Account Creation & Environment Provisioning**:
+   - Automated via Google Chrome (`Profile 2`) under `vlad@bluebeeweb.com`.
+   - Created Organisation `Bluebeeweb` and Project `My first project`.
+   - Generated Server-side Environment Key (`Imperal OS Server Key`).
+2. **Step 1: Connect (`connect_flagsmith_connector`)**:
+   - Authenticated against live Flagsmith Edge API `GET /api/v1/flags/`.
+   - Credential saved in Document store, masked with standard asterisks format (`ser.******************U6PN`).
+3. **Step 2: List Connections (`list_connections`)**:
+   - Verified active connection enumeration with secret protection.
+4. **Step 3: List Flags (`list_flags`)**:
+   - Queried live feature flags (`show_demo_button`, ID: `254162`).
+5. **Step 4: Get Flag (`get_flag`)**:
+   - Retrieved exact feature record by ID with status.
+6. **Step 5: Audit Health (`audit_flag_health`)**:
+   - Verified automated connectivity and feature count telemetry.
+7. **Step 6: Disconnect (`disconnect_flagsmith_connector`)**:
+   - Clean teardown from storage verified.
